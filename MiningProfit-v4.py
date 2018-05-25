@@ -16,18 +16,29 @@ def btcScrape():
     BTC = coinbaseData['data']['amount']
     return BTC
 
-def duplicateCheck(rowNum, payDate, sheet):
-    if (payDate == sheet.cell(row=(rowNum-1), column=1).value):
+def duplicateCheck(rowNum, payDate, paid, sheet, bspanList):
+    if (payDate == sheet.cell(row=(rowNum-1), column=1).value and paid != sheet.cell(row=(rowNum-1), column=3).value):
         replace = input('Current pay time matches last recorded at ' + str(payDate) + ', possible duplicate. \nWould you like to continue? (y/n)').lower()
         if (replace == 'y'):
-            return True
+            return 1, payDate, paid
         elif (replace == 'n'):
-            return False
+            return 0, payDate, paid
+        else:
+            print ('Invalid input, please try again')
+            duplicateCheck(rowNum,payDate,sheet)
+    elif (payDate == sheet.cell(row=(rowNum-1), column=1).value and paid != sheet.cell(row=(rowNum-1), column=3).value):
+        replace = input('Multi payment detected on ' + str(payDate) + ' \nWould you like to continue? (y/n)').lower()
+        if (replace == 'y'):
+            paid = paid - sheet.cell(row=(rowNum-1),column=3).value
+            payDate = bspanList[-2].get('title')[:-3]
+            return 1, payDate, paid
+        elif (replace == 'n'):
+            return 0, payDate, paid
         else:
             print ('Invalid input, please try again')
             duplicateCheck(rowNum,payDate,sheet)
 
-def profitUpdate(sheet, date, pool, paid, btcVal):
+def profitUpdate(sheet, date, pool, paid, btcVal, bList):
     rowNum = 6
     #checks if cell has value, and iterates until it finds empty row
     while True:
@@ -37,29 +48,31 @@ def profitUpdate(sheet, date, pool, paid, btcVal):
         else:
             break
     while True:
-        duplicateCheck(rowNum, date, sheet)
-        #update BTC value
-        sheet.cell(row=2, column=3).value = float(btcVal)
-        #time paid was added
-        sheet.cell(row=rowNum, column=1).value = date
-        #Pool
-        sheet.cell(row=rowNum, column=2).value = pool
-        #total paid value
-        sheet.cell(row=rowNum, column=3).value = float(paid)
-        #price per coin
-        sheet.cell(row=rowNum, column=4).value = float(btcVal)
-        #coin since previous day
-        sheet.cell(row=rowNum, column=5).value = '=$C' + str(rowNum) + '/($A' + str(rowNum) + '-$A' + str(rowNum - 1) + ')'
-        #dollar per day
-        sheet.cell(row=rowNum, column=6).value = '=$E' + str(rowNum) + '*$D' + str(rowNum)
-        #BTC per rig per day
-        sheet.cell(row=rowNum, column=7).value = '=$E' + str(rowNum) + '/$G$2'
-        #dollar per rig per day
-        sheet.cell(row=rowNum, column=8).value = '=$F' + str(rowNum) + '/$G$2'
-        #save new additions
-        wb.save("MiningProfit.xlsx")
-        break
-
+        loop, date, paid = duplicateCheck(rowNum, date, paid, sheet, bspanList)
+        if loop == 1:
+            #update BTC value
+            sheet.cell(row=2, column=3).value = float(btcVal)
+            #time paid was added
+            sheet.cell(row=rowNum, column=1).value = date
+            #Pool
+            sheet.cell(row=rowNum, column=2).value = pool
+            #total paid value
+            sheet.cell(row=rowNum, column=3).value = float(paid)
+            #price per coin
+            sheet.cell(row=rowNum, column=4).value = float(btcVal)
+            #coin since previous day
+            sheet.cell(row=rowNum, column=5).value = '=$C' + str(rowNum) + '/($A' + str(rowNum) + '-$A' + str(rowNum - 1) + ')'
+            #dollar per day
+            sheet.cell(row=rowNum, column=6).value = '=$E' + str(rowNum) + '*$D' + str(rowNum)
+            #BTC per rig per day
+            sheet.cell(row=rowNum, column=7).value = '=$E' + str(rowNum) + '/$G$2'
+            #dollar per rig per day
+            sheet.cell(row=rowNum, column=8).value = '=$F' + str(rowNum) + '/$G$2'
+            #save new additions
+            wb.save("MiningProfit.xlsx")
+            break
+        else:
+            break
 def zpoolScrape():
     #Sets pool value, gets BTC price, and starts count for sheet page
     currentPool = "zpool"
@@ -96,7 +109,7 @@ def zpoolScrape():
             #checks that payment occured
             if (amountPaid != 0):
                 print('Writing data to workbook')
-                profitUpdate(sheetTitle, dateTime, currentPool, amountPaid, btcPrice)
+                profitUpdate(sheetTitle, dateTime, currentPool, amountPaid, btcPrice, bspanList)
         except:
             print('No payment recorded')
         #changes count to open next tab
