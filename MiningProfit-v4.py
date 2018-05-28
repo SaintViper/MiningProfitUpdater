@@ -16,13 +16,14 @@ def btcScrape():
     BTC = coinbaseData['data']['amount']
     return BTC
 
+#Checks cells values for duplicate or multiple payments
 def duplicateCheck(rowNum, payDate, paid, sheet, bspanList):
     if (payDate == sheet.cell(row=(rowNum-1), column=1).value and paid != sheet.cell(row=(rowNum-1), column=3).value):
         replace = input('Current pay time matches last recorded at ' + str(payDate) + ', possible duplicate. \nWould you like to continue? (y/n)').lower()
         if (replace == 'y'):
-            return 1, payDate, paid
+            return (1, payDate, paid)
         elif (replace == 'n'):
-            return 0, payDate, paid
+            return (0, payDate, paid)
         else:
             print ('Invalid input, please try again')
             duplicateCheck(rowNum,payDate,sheet)
@@ -31,14 +32,16 @@ def duplicateCheck(rowNum, payDate, paid, sheet, bspanList):
         if (replace == 'y'):
             paid = paid - sheet.cell(row=(rowNum-1),column=3).value
             payDate = bspanList[-2].get('title')[:-3]
-            return 1, payDate, paid
+            return (1, payDate, paid)
         elif (replace == 'n'):
-            return 0, payDate, paid
+            return (0, payDate, paid)
         else:
             print ('Invalid input, please try again')
-            duplicateCheck(rowNum,payDate,sheet)
+            duplicateCheck(rowNum,payDate,paid,sheet,bspanList)
+    else:
+        return (1, payDate, paid)
 
-def profitUpdate(sheet, date, pool, paid, btcVal, bList):
+def profitUpdate(sheet, date, pool, paid, btcVal, bspanList):
     rowNum = 6
     #checks if cell has value, and iterates until it finds empty row
     while True:
@@ -48,8 +51,8 @@ def profitUpdate(sheet, date, pool, paid, btcVal, bList):
         else:
             break
     while True:
-        loop, date, paid = duplicateCheck(rowNum, date, paid, sheet, bspanList)
-        if loop == 1:
+        yOrN, date, paid = duplicateCheck(rowNum, date, paid, sheet, bspanList)
+        if yOrN == 1:
             #update BTC value
             sheet.cell(row=2, column=3).value = float(btcVal)
             #time paid was added
@@ -116,7 +119,7 @@ def zpoolScrape():
         count += 1
 
 #must change directory to location of excel workbook
-os.chdir('D:\\')
+os.chdir('')
 #BTC address
 address = {'Miner0-3':'3DfY3BE5w72x7AdrU8o3NvjEzqLvxq1As3', 'Miner4':'3G89tWUHn6VdnaBxoMRTd4WrokJnmVHGfx'}
 print('Starting Firefox')
